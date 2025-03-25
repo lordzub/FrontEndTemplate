@@ -49,10 +49,7 @@ const Overview: React.FC = () => {
             try {
                 //console.log("Overview: Fetching trades for other components");
                 const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_trades');
-
-                //console.log("Overview: Fetched trades:", data);
                 const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-                //console.log("Overview: Parsed data:", parsedData["trades"]);
                 const tradesData = parsedData.trades.slice(1);
                 //console.log("Overview: Fetched trades:", tradesData);
                 setTrades([...tradesData]);
@@ -81,6 +78,25 @@ const Overview: React.FC = () => {
         }
     };
 
+    // Convert trades to TradeTable format
+    const convertToTradeTableFormat = (trades: Trade[]) => {
+        return trades.map(trade => ({
+            'Date of Trade': trade.trade_date,
+            'Action': trade.action,
+            'Symbol': trade.symbol,
+            'Description': trade.reference || '',
+            'Type': 'Stock', // Default type
+            'Quantity': trade.size,
+            'Price ($)': trade.price_per_lot,
+            'Commission ($)': 0, // Default value
+            'Fees ($)': trade.activity_assessment_fee || 0,
+            'Accrued Interest ($)': 0, // Default value
+            'Amount ($)': trade.principal_amount,
+            'Cash Balance ($)': 0, // Default value
+            'Settlement Date': trade.settlement_date
+        }));
+    };
+
     if (loading) return <div>Loading trades...</div>;
     if (error) return <div>Error: {error}</div>;
 
@@ -90,8 +106,42 @@ const Overview: React.FC = () => {
             <div className="mb-6">
                 <PortfolioSummary trades={trades} refreshData={refreshTrades} />
             </div>
+ 
 
+<Tabs defaultValue="trades" className="w-full">
+                <TabsList>
+                    <TabsTrigger value="trades">Trades</TabsTrigger>
+                    <TabsTrigger value="positions">Positions</TabsTrigger>
+                    <TabsTrigger value="create">Create Trade</TabsTrigger>
+                </TabsList>
 
+                <TabsContent value="trades">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Recent Trades</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {trades.length === 0 ? (
+                                <div>No trades found</div>
+                            ) : (
+                                <TradeTable key={trades.length+'ss'} initialTrades={convertToTradeTableFormat(trades)} />
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="positions">
+                    <SymbolSection 
+                        portfolioMetrics={portfolioMetrics}
+                        selectedSymbol={selectedSymbol}
+                        setSelectedSymbol={setSelectedSymbol}
+                    />
+                </TabsContent>
+
+                <TabsContent value="create">
+                    <CreateTradeForm onTradeCreated={refreshTrades} />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 };

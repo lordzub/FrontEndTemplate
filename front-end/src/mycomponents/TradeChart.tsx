@@ -17,11 +17,12 @@ interface TradeData {
 }
 
 interface Trade {
-  action: 'Buy' | 'Sell';
-  trade_date: string;
-  price: string;
-  size: number;
-  principal_amount: string;
+  'Action': string;
+  'Date of Trade': string;
+  'Price ($)': number;
+  'Quantity': number;
+  'Amount ($)': number;
+  Type?: string;
 }
 
 interface CandlestickChartProps {
@@ -33,16 +34,6 @@ interface CandlestickChartProps {
   }>;
 }
 
-// Replace the dynamic import with lazy
-// const ReactApexChart = lazy(() => import('react-apexcharts'));
-
-// Modify data processing to only use Close price
-const processChartData = (data: TradeData[]) => {
-  return data.map(item => ({
-    x: new Date(item.Date).getTime(),
-    y: item.Close
-  }));
-};
 
 // Replace the ApexCharts import with Recharts components
 import {
@@ -81,54 +72,62 @@ const TradeChart: React.FC<CandlestickChartProps> = React.memo(({ trades, symbol
   // Calculate initial visible range based on trade dates
   const [visibleRange] = useState(() => {
     if (!trades.length) return {
-      min: new Date().getTime() - (86400000 * 90), // fallback to 90 days
+      min: new Date().getTime() - (86400000 * 90),
       max: new Date().getTime()
     };
 
-    const tradeDates = trades.map(trade => new Date(trade.trade_date).getTime());
+    const tradeDates = trades.map(trade => new Date(trade['Date of Trade'].trim()).getTime());
     const minTradeDate = Math.min(...tradeDates);
     const maxTradeDate = Math.max(...tradeDates);
-    console.log(new Date(minTradeDate), new Date(maxTradeDate));
-    // Add some padding (7 days before first trade and after last trade)
+    
     return {
       min: minTradeDate - (86400000 * 7),
       max: maxTradeDate + (86400000 * 7)
     };
   });
 
-  // Update chart data processing to include trades and splits
+  // Helper function to normalize dates
+  const normalizeDate = (dateStr: string) => {
+    // Remove leading/trailing spaces and handle various date formats
+    const cleanDate = dateStr.trim();
+    return new Date(cleanDate).setHours(0, 0, 0, 0);
+  };
+
+  // Update chart data processing
   const chartData = useMemo(() => {
     try {
-      return symbolData.map(item => {
-        const date = new Date(item.Date).getTime();
-        const trade = trades.find(t => new Date(t.trade_date).getTime() === date);
-        const split = stockSplits.find(s => new Date(s.date).getTime() === date);
-        
-        return {
-          date,
-          price: Number(item.Close),
-          trade: trade ? {
-            action: trade.action,
-            price: parseFloat(trade.price),
-            size: trade.size
-          } : undefined,
-          split: split?.stock_split
-        };
-      });
+      return symbolData
+        .map(item => {
+          const itemDate = normalizeDate(item.Date);
+          const trade = trades.find(t => normalizeDate(t['Date of Trade']) === itemDate);
+          const split = stockSplits.find(s => normalizeDate(s.date) === itemDate);
+          
+          return {
+            date: itemDate,
+            price: Number(item.Close),
+            trade: trade ? {
+              action: trade['Action'],
+              price: Number(trade['Price ($)']),
+              quantity: Number(trade['Quantity']),
+              amount: Number(trade['Amount ($)']),
+              type: trade['Type']
+            } : undefined,
+            split: split?.stock_split
+          };
+        })
+        .sort((a, b) => a.date - b.date); // Sort by date in ascending order
     } catch (error) {
       console.error('Error processing chart data:', error);
       return [];
     }
   }, [symbolData, trades, stockSplits]);
 
-  // Custom tooltip component
+  // Custom tooltip with improved trade display
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
 
     const date = new Date(label);
-    const trade = trades.find(t => 
-      new Date(t.trade_date).getTime() === date.getTime()
-    );
+    const trade = trades.find(t => normalizeDate(t['Date of Trade']) === normalizeDate(date.toISOString()));
     const split = payload[0]?.payload?.split;
 
     return (
@@ -151,12 +150,12 @@ const TradeChart: React.FC<CandlestickChartProps> = React.memo(({ trades, symbol
         )}
         {trade && (
           <div className="mt-2 pt-2 border-t border-[#2A2E39]">
-            <p className={trade.action === 'Buy' ? 'text-[#089981]' : 'text-[#F23645]'}>
-              {trade.action} Trade
+            <p className={trade['Type'] === 'Short' ? 'text-[#F23645]' : 'text-[#089981]'}>
+              {trade['Action']}
             </p>
-            <p>Size: {Math.round(trade.size).toLocaleString()}</p>
-            <p>Price: ${parseFloat(trade.price).toFixed(2)}</p>
-            <p>Value: ${parseFloat(trade.principal_amount).toLocaleString()}</p>
+            <p>Size: {Math.abs(Number(trade['Quantity'])).toLocaleString()}</p>
+            <p>Price: ${Number(trade['Price ($)']).toFixed(2)}</p>
+            <p>Value: ${Math.abs(Number(trade['Amount ($)'])).toLocaleString()}</p>
           </div>
         )}
       </div>
@@ -188,23 +187,42 @@ const TradeChart: React.FC<CandlestickChartProps> = React.memo(({ trades, symbol
               const trade = props.payload.trade;
               if (!trade) return null;
               
+              // Make trade dots more visible
               return (
                 <circle
+                  key={`dot-${props.index}`}
                   cx={props.cx}
                   cy={props.cy}
-                  r={4}
-                  fill={trade.action === 'Buy' ? '#089981' : '#F23645'}
-                  stroke="none"
+                  r={5}
+                  fill={trade.type === 'Short' ? '#F23645' : '#089981'}
+                  stroke="#ffffff"
+                  strokeWidth={1}
                 />
               );
             }}
             strokeWidth={2}
+            animationBegin={0}
+            animationDuration={500}
+            animationEasing="ease"
+            isAnimationActive={false}
           />
-          {/* Add split markers with descriptive labels */}
+          {/* Remove trade markers */}
+          {/* {trades.map((trade, index) => (
+            <ReferenceDot
+              key={`trade-${index}`}
+              x={normalizeDate(trade['Date of Trade'])}
+              y={Number(trade['Price ($)'])}
+              r={6}
+              fill={trade['Type'] === 'Short' ? '#F23645' : '#089981'}
+              stroke="#ffffff"
+              strokeWidth={1}
+            />
+          ))} */}
+          {/* Stock splits */}
           {stockSplits.map((split, index) => (
             <ReferenceLine
-              key={index}
-              x={new Date(split.date).getTime()}
+              key={`split-${index}`}
+              x={normalizeDate(split.date)}
               stroke={split.stock_split > 1 ? '#FFD700' : '#000000'}
               strokeDasharray="3 3"
               label={{
