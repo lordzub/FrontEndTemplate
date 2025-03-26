@@ -53,7 +53,7 @@ const Overview: React.FC = () => {
                 //console.log("Overview: Fetched trades:", data);
                 const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
                 //console.log("Overview: Parsed data:", parsedData["trades"]);
-                const tradesData = parsedData.trades.slice(1);
+
                 //console.log("Overview: Fetched trades:", tradesData);
                 setTrades([...tradesData]);
             } catch (err) {
