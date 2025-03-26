@@ -5,6 +5,15 @@ import { PositionMetrics } from './types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import PriceChart from './PriceChart';
 import TradeHistory from './TradeHistory';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "../components/ui/table";
 
 // Making the Trade interface more flexible to work with both data structures
 interface PortfolioTrade {
@@ -87,6 +96,14 @@ export interface FormattedTrade {
   'unadjusted_price'?: number;
   'unadjusted_quantity'?: number;
   'Current Price'?: number;
+}
+
+interface Position {
+    "% Total Gain/Loss": number;
+    "Acquired": string;
+    "Average Cost Basis": number;
+    "Current Price": number;
+    "Quantity": number;
 }
 
 const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ trades, refreshData }) => {
@@ -501,198 +518,300 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ trades, refreshData
     return trades.filter(trade => getTradeField(trade, 'Symbol', '') === symbol);
   };
 
+  // Calculate long positions summary
+  const longSummary = {
+    totalQuantity: portfolioMetrics.positions.filter(p => !p.isShort).reduce((sum, pos) => sum + pos.quantity, 0),
+    totalValue: portfolioMetrics.positions.filter(p => !p.isShort).reduce((sum, pos) => sum + (pos.quantity * pos.currentPrice), 0),
+    totalCost: portfolioMetrics.positions.filter(p => !p.isShort).reduce((sum, pos) => sum + (pos.quantity * pos.averagePrice), 0),
+    averageCost: portfolioMetrics.positions.filter(p => !p.isShort).length > 0 
+        ? portfolioMetrics.positions.filter(p => !p.isShort).reduce((sum, pos) => sum + (pos.quantity * pos.averagePrice), 0) / 
+          portfolioMetrics.positions.filter(p => !p.isShort).reduce((sum, pos) => sum + pos.quantity, 0)
+        : 0,
+    totalGainLoss: portfolioMetrics.positions.filter(p => !p.isShort).reduce((sum, pos) => {
+        return sum + ((pos.currentPrice - pos.averagePrice) * pos.quantity);
+    }, 0),
+  };
+
+  // Calculate short positions summary
+  const shortSummary = {
+    totalQuantity: portfolioMetrics.positions.filter(p => p.isShort).reduce((sum, pos) => sum + pos.quantity, 0), // Already negative
+    totalValue: portfolioMetrics.positions.filter(p => p.isShort).reduce((sum, pos) => sum + (pos.quantity * pos.currentPrice), 0),
+    totalCost: portfolioMetrics.positions.filter(p => p.isShort).reduce((sum, pos) => sum + (pos.quantity * pos.averagePrice), 0),
+    averageCost: portfolioMetrics.positions.filter(p => p.isShort).length > 0
+        ? portfolioMetrics.positions.filter(p => p.isShort).reduce((sum, pos) => sum + (pos.quantity * pos.averagePrice), 0) / 
+          portfolioMetrics.positions.filter(p => p.isShort).reduce((sum, pos) => sum + pos.quantity, 0)
+        : 0,
+    totalGainLoss: portfolioMetrics.positions.filter(p => p.isShort).reduce((sum, pos) => {
+        // For shorts, profit is made when price goes down
+        return sum + ((pos.averagePrice - pos.currentPrice) * Math.abs(pos.quantity));
+    }, 0),
+  };
+
+  // Overall portfolio metrics
+  const overallSummary = {
+    netQuantity: longSummary.totalQuantity + shortSummary.totalQuantity,
+    totalValue: longSummary.totalValue + Math.abs(shortSummary.totalValue),
+    totalGainLoss: longSummary.totalGainLoss + shortSummary.totalGainLoss,
+    rateOfReturn: ((longSummary.totalGainLoss + shortSummary.totalGainLoss) / 
+        (Math.abs(longSummary.totalCost) + Math.abs(shortSummary.totalCost))) * 100
+  };
+
   return (
-    <Card className="col-span-3">
-      <CardHeader>
-        <CardTitle>Portfolio Summary</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-3 md:grid-cols-3 gap-4 mb-6">
-          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <h3 className="text-sm text-gray-500 dark:text-gray-400">Total Value</h3>
-            <p className="text-2xl font-bold">
-              ${portfolioMetrics?.totalValue.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold">Portfolio Summary</h2>
+        <div className="text-right">
+          <p className="text-sm text-muted-foreground">Current Portfolio Value: {portfolioMetrics?.totalValue.toLocaleString(undefined, {
+            style: 'currency',
+            currency: 'USD',
+          })}</p>
+          <p className="text-2xl font-semibold">
+            Overall P&L: <span className={overallSummary.totalGainLoss >= 0 ? "text-green-600" : "text-red-600"}>
+              {overallSummary.totalGainLoss.toLocaleString(undefined, {
+                style: 'currency',
+                currency: 'USD',
               })}
-            </p>
-          </div>
-          
-          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <h3 className="text-sm text-gray-500 dark:text-gray-400">Total P/L</h3>
-            <p className={`text-2xl font-bold ${portfolioMetrics?.totalProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ${portfolioMetrics?.totalProfitLoss.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
-              <span className="text-sm ml-1">
-                ({portfolioMetrics?.profitLossPercentage.toFixed(2)}%)
-              </span>
-            </p>
-          </div>
-          
-          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <h3 className="text-sm text-gray-500 dark:text-gray-400">Annualized Return</h3>
-            <p className={`text-2xl font-bold ${portfolioMetrics?.annualizedReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {portfolioMetrics?.annualizedReturn.toFixed(2)}%
-            </p>
-          </div>
+            </span>
+          </p>
         </div>
+      </div>
 
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-4">Holdings</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2 text-center w-8"></th>
-                  {[
-                    { key: 'symbol', label: 'Symbol', align: 'center' },
-                    { key: 'quantity', label: 'Quantity', align: 'center' },
-                    { key: 'value', label: 'Value', align: 'center' },
-                    { key: 'profitLoss', label: 'P/L', align: 'center' },
-                    { key: 'allocation', label: 'Allocation', align: 'center' }
-                  ].map(({ key, label, align }) => (
-                    <th 
-                      key={key}
-                      className={`py-2 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800`}
-                      onClick={() => handleSort(key as keyof PortfolioMetrics['positions'][0])}
-                    >
-                      <div className="flex items-center justify-center gap-1">
-                        {label}
-                        {sortConfig.key === key && (
-                          <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedPositions?.map((position, index) => (
-                  <React.Fragment key={index}>
-                    <tr 
-                      className="border-b cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                      onClick={() => setExpandedSymbol(expandedSymbol === position.symbol ? null : position.symbol)}
-                    >
-                      <td className="py-2 text-center">
-                        {expandedSymbol === position.symbol ? (
-                          <ChevronDown className="w-4 h-4 inline-block" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 inline-block" />
-                        )}
-                      </td>
-                      <td className="py-2 text-center">{position.symbol}</td>
-                      <td className="text-center py-2">{Math.abs(position.quantity).toLocaleString()}</td>
-                      <td className="text-center py-2">${position.value.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}</td>
-                      <td className={`text-center py-2 ${position.profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        ${position.profitLoss.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
-                      </td>
-                      <td className="text-center py-2">{position.allocation.toFixed(1)}%</td>
-                    </tr>
-                    {expandedSymbol === position.symbol && (
-                      <tr className="">
-                        <td colSpan={6} className="py-4 px-6">
-                          <div className="space-y-6">
-                            {/* Position Details Card */}
-                            <Card className="shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-                              <CardHeader className="bg-gray-50 dark:bg-gray-800 py-3 px-4 border-b border-gray-200 dark:border-gray-700">
-                                <CardTitle className="text-md font-medium">{position.symbol} Position Details</CardTitle>
-                              </CardHeader>
-                              <CardContent className="p-4">
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-                                  <div className="px-2 py-1">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Position Type</p>
-                                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                                      {position.isShort ? 'Short' : 'Long'}
-                                    </p>
-                                  </div>
-                                  <div className="px-2 py-1">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Average Price</p>
-                                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                                      ${position.averagePrice.toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                      })}
-                                    </p>
-                                  </div>
-                                  <div className="px-2 py-1">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Last Trade Price</p>
-                                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                                      ${position.lastTradePrice.toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                      })}
-                                    </p>
-                                  </div>
-                                  {position.currentPrice > 0 && (
-                                    <div className="px-2 py-1">
-                                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current Market Price</p>
-                                      <p className="font-medium text-gray-900 dark:text-gray-100">
-                                        ${position.currentPrice.toLocaleString(undefined, {
-                                          minimumFractionDigits: 2,
-                                          maximumFractionDigits: 2
-                                        })}
-                                      </p>
-                                    </div>
-                                  )}
-                                  <div className="px-2 py-1">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Cost</p>
-                                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                                      ${Math.abs(position.totalCost).toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                      })}
-                                    </p>
-                                  </div>
-                                  <div className="px-2 py-1">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current Value</p>
-                                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                                      ${position.value.toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                      })}
-                                    </p>
-                                  </div>
-                                  <div className="px-2 py-1">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">P/L %</p>
-                                    <p className={`font-medium ${position.profitLoss >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
-                                      {((position.profitLoss / Math.abs(position.totalCost)) * 100).toFixed(2)}%
-                                    </p>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Overall Summary Card */}
+        <Card className="col-span-full">
+          <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-lg">
+            <CardTitle>Overall Portfolio Performance</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Net Position</p>
+                <p className="text-2xl font-bold">{overallSummary.netQuantity}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Total Value</p>
+                <p className="text-2xl font-bold">{portfolioMetrics?.totalValue.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'USD',
+                })}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Total P&L</p>
+                <p className={`text-2xl font-bold ${overallSummary.totalGainLoss >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  {overallSummary.totalGainLoss.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'USD',
+                  })}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Rate of Return</p>
+                <p className={`text-2xl font-bold ${overallSummary.rateOfReturn >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  {overallSummary.rateOfReturn.toFixed(2)}%
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-                            {/* Trade History Card */}
-                            <Card className="shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-                              <CardHeader className="bg-gray-50 dark:bg-gray-800 py-3 px-4 border-b border-gray-200 dark:border-gray-700">
-                                <CardTitle className="text-md font-medium">{position.symbol} Trade History</CardTitle>
-                              </CardHeader>
-                              <CardContent className="p-0"> {/* Removed padding to let the TradeHistory component handle its own layout */}
-                                <TradeHistory
-                                  trades={formatTradesForComponents(getSymbolTrades(expandedSymbol))}
-                                />
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        {/* Long and Short Summary Cards */}
+        <Card>
+          <CardHeader className="bg-green-600 text-white rounded-t-lg">
+            <CardTitle>Long Positions</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Shares</p>
+                  <p className="text-xl font-semibold">{longSummary.totalQuantity}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Average Cost</p>
+                  <p className="text-xl font-semibold">{longSummary.averageCost.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'USD',
+                  })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Value</p>
+                  <p className="text-xl font-semibold">{longSummary.totalValue.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'USD',
+                  })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total P&L</p>
+                  <p className={`text-xl font-semibold ${longSummary.totalGainLoss >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {longSummary.totalGainLoss.toLocaleString(undefined, {
+                      style: 'currency',
+                      currency: 'USD',
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="bg-red-600 text-white rounded-t-lg">
+            <CardTitle>Short Positions</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Shares</p>
+                  <p className="text-xl font-semibold">{shortSummary.totalQuantity}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Average Cost</p>
+                  <p className="text-xl font-semibold">{shortSummary.averageCost.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'USD',
+                  })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Value</p>
+                  <p className="text-xl font-semibold">{Math.abs(shortSummary.totalValue).toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'USD',
+                  })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total P&L</p>
+                  <p className={`text-xl font-semibold ${shortSummary.totalGainLoss >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {shortSummary.totalGainLoss.toLocaleString(undefined, {
+                      style: 'currency',
+                      currency: 'USD',
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 md:col-span-3">
+          <Tabs defaultValue="long" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="long">Long Positions</TabsTrigger>
+              <TabsTrigger value="short">Short Positions</TabsTrigger>
+            </TabsList>
+            <TabsContent value="long" className="p-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Acquired</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Cost Basis</TableHead>
+                    <TableHead>Current Price</TableHead>
+                    <TableHead>Market Value</TableHead>
+                    <TableHead>Gain/Loss</TableHead>
+                    <TableHead>% G/L</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {portfolioMetrics.positions.filter(p => !p.isShort).map((position, index) => {
+                    const marketValue = position.quantity * position.currentPrice;
+                    const costBasis = position.quantity * position.averagePrice;
+                    const gainLoss = marketValue - costBasis;
+                    
+                    return (
+                      <TableRow key={index}>
+                        <TableCell>{new Date(position.settlement_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}</TableCell>
+                        <TableCell>{position.quantity}</TableCell>
+                        <TableCell>{position.averagePrice.toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'USD',
+                        })}</TableCell>
+                        <TableCell>{position.currentPrice.toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'USD',
+                        })}</TableCell>
+                        <TableCell>{marketValue.toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'USD',
+                        })}</TableCell>
+                        <TableCell className={gainLoss >= 0 ? "text-green-600" : "text-red-600"}>
+                          {gainLoss.toLocaleString(undefined, {
+                            style: 'currency',
+                            currency: 'USD',
+                          })}
+                        </TableCell>
+                        <TableCell className={position.profitLossPercentage >= 0 ? "text-green-600" : "text-red-600"}>
+                          {position.profitLossPercentage.toFixed(2)}%
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TabsContent>
+            <TabsContent value="short" className="p-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Acquired</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Cost Basis</TableHead>
+                    <TableHead>Current Price</TableHead>
+                    <TableHead>Market Value</TableHead>
+                    <TableHead>Gain/Loss</TableHead>
+                    <TableHead>% G/L</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {portfolioMetrics.positions.filter(p => p.isShort).map((position, index) => {
+                    const marketValue = Math.abs(position.quantity) * position.currentPrice;
+                    const costBasis = Math.abs(position.quantity) * position.averagePrice;
+                    // For shorts, profit is made when price goes down
+                    const gainLoss = (position.averagePrice - position.currentPrice) * Math.abs(position.quantity);
+                    
+                    return (
+                      <TableRow key={index}>
+                        <TableCell>{new Date(position.settlement_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}</TableCell>
+                        <TableCell>{position.quantity}</TableCell>
+                        <TableCell>{position.averagePrice.toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'USD',
+                        })}</TableCell>
+                        <TableCell>{position.currentPrice.toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'USD',
+                        })}</TableCell>
+                        <TableCell>{marketValue.toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'USD',
+                        })}</TableCell>
+                        <TableCell className={gainLoss >= 0 ? "text-green-600" : "text-red-600"}>
+                          {gainLoss.toLocaleString(undefined, {
+                            style: 'currency',
+                            currency: 'USD',
+                          })}
+                        </TableCell>
+                        <TableCell className={position.profitLossPercentage >= 0 ? "text-green-600" : "text-red-600"}>
+                          {position.profitLossPercentage.toFixed(2)}%
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TabsContent>
+          </Tabs>
+        </Card>
+      </div>
+    </div>
   );
 };
 

@@ -12,7 +12,7 @@ import {
     TableRow,
 } from "../components/ui/table";
 import TradeTable from './TradeTable';
-import CreateTradeForm from './CreateTradeForm';
+import SQQQPortfolioSummary from './SQQQPortfolioSummary';
 import PortfolioSummary from './PortfolioSummary';
 import { Trade as ImportedTrade } from './types';
 
@@ -29,7 +29,8 @@ export interface Trade extends ImportedTrade {
 }
 
 const Overview: React.FC = () => {
-    const [trades, setTrades] = useState<Trade[]>([]);
+    const [shortTrades, setShortTrades] = useState<Trade[]>([]);
+    const [longTrades, setLongTrades] = useState<Trade[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
@@ -42,56 +43,58 @@ const Overview: React.FC = () => {
             lastPrice: number;
         }>;
     }>({ symbolPositions: new Map() });
-
-    // Fetch trades for other components (not for SymbolSection)
-    useEffect(() => {
-        const fetchTrades = async () => {
-            try {
-                //console.log("Overview: Fetching trades for other components");
-                const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_trades');
-
-                //console.log("Overview: Fetched trades:", data);
-                const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-                //console.log("Overview: Parsed data:", parsedData["trades"]);
-                const tradesData = parsedData.trades.slice(1);
-                //console.log("Overview: Fetched trades:", tradesData);
-                setTrades([...tradesData]);
-            } catch (err) {
-                setError(axios.isAxiosError(err) 
-                    ? err.response?.data?.message || err.message 
-                    : 'An error occurred');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchTrades();
-    }, []);
-
-    const refreshTrades = async () => {
+    const fetchShortTrades = async () => {
         try {
-            const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_trades');
+            //console.log("Overview: Fetching trades for other components");
+            const { data } = await axios.get('https://sqqq-tracker-a7f625a4e2b8.herokuapp.com/get_short_trades');
+
+            //console.log("Overview: Fetched trades:", data);
             const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-            const tradesData = parsedData.trades.slice(1);
-            setTrades(tradesData);
+            //console.log("Overview: Parsed data:", parsedData["trades"]);
+            const tradesData = parsedData["short trades"]
+            console.log("Overview: Fetched trades:", tradesData);
+            setShortTrades([...tradesData]);
         } catch (err) {
             setError(axios.isAxiosError(err) 
                 ? err.response?.data?.message || err.message 
                 : 'An error occurred');
+        } finally {
+            setLoading(false);
         }
     };
+    const fetchLongTrades = async () => {
+        try {
+            //console.log("Overview: Fetching trades for other components");
+            const { data } = await axios.get('https://sqqq-tracker-a7f625a4e2b8.herokuapp.com/get_long_trades');
+
+            //console.log("Overview: Fetched trades:", data);
+            const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+            //console.log("Overview: Parsed data:", parsedData["trades"]);
+            const tradesData = parsedData["long trades"]
+            console.log("Overview: Fetched trades:", tradesData);
+            setLongTrades([...tradesData]);
+        } catch (err) {
+            setError(axios.isAxiosError(err) 
+                ? err.response?.data?.message || err.message 
+                : 'An error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
+    // Fetch trades for other components (not for SymbolSection)
+    useEffect(() => {
+        fetchLongTrades();
+        fetchShortTrades();
+    }, []);
 
     if (loading) return <div>Loading trades...</div>;
     if (error) return <div>Error: {error}</div>;
 
     return (
         <div className="container mx-auto p-4">
-
             <div className="mb-6">
-                <PortfolioSummary trades={trades} refreshData={refreshTrades} />
+                <SQQQPortfolioSummary shortPositions={shortTrades} longPositions={longTrades} />
             </div>
-
-
         </div>
     );
 };

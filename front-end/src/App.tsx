@@ -14,7 +14,7 @@ function App() {
     const token = urlParams.get('token'); // Assumes the token is passed as a query parameter named 'token'
 
     if (token) {
-      axios.post('https://port-tracker-a42556a33892.herokuapp.com/api/verify', { token })
+      axios.post('https://sqqq-tracker-a7f625a4e2b8.herokuapp.com/api/verify', { token })
         .then(response => {
           //console.log(response.data);
           setAccess(response.data.access)
