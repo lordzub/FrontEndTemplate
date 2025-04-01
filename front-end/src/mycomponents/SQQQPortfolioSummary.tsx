@@ -34,16 +34,31 @@ const SQQQPortfolioSummary: React.FC<SQQQPortfolioSummaryProps> = ({ shortPositi
     };
 
     const formatDate = (dateString: string): string => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+        // Split on "T" and take the date part
+        const datePart = dateString.split('T')[0];
+        
+        // Create a date from the date part
+        const date = new Date(datePart);
+        
+        // Add one day
+        date.setDate(date.getDate() + 1);
+        
+        // Format the date as YYYY-MM-DD
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // months are 0-indexed
+        const day = String(date.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
     };
 
     const formatPercent = (value: number): string => {
         return `${value.toFixed(2)}%`;
     };
+
+    const formatPercentTable = (value: number): string => {
+        return `${(value*100).toFixed(2)}%`
+    };
+
 
     // Calculate long positions summary
     const longSummary = {
@@ -77,7 +92,7 @@ const SQQQPortfolioSummary: React.FC<SQQQPortfolioSummaryProps> = ({ shortPositi
     // Overall portfolio metrics
     const overallSummary = {
         netQuantity: longSummary.totalQuantity + shortSummary.totalQuantity,
-        totalValue: longSummary.totalValue + shortSummary.totalValue,
+        totalValue: Math.abs(longSummary.totalQuantity + shortSummary.totalQuantity) * 33.52, // Using current price
         totalGainLoss: longSummary.totalGainLoss + shortSummary.totalGainLoss,
         rateOfReturn: ((longSummary.totalGainLoss + shortSummary.totalGainLoss) / 
             (Math.abs(longSummary.totalCost) + Math.abs(shortSummary.totalCost))) * 100
@@ -236,7 +251,7 @@ const SQQQPortfolioSummary: React.FC<SQQQPortfolioSummaryProps> = ({ shortPositi
                                                     {formatCurrency(gainLoss)}
                                                 </TableCell>
                                                 <TableCell className={`text-center ${position["% Total Gain/Loss"] >= 0 ? "text-green-600" : "text-red-600"}`}>
-                                                    {formatPercent(position["% Total Gain/Loss"])}
+                                                    {formatPercentTable(position["% Total Gain/Loss"])}
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -275,7 +290,7 @@ const SQQQPortfolioSummary: React.FC<SQQQPortfolioSummaryProps> = ({ shortPositi
                                                     {formatCurrency(gainLoss)}
                                                 </TableCell>
                                                 <TableCell className={`text-center ${position["% Total Gain/Loss"] >= 0 ? "text-green-600" : "text-red-600"}`}>
-                                                    {formatPercent(position["% Total Gain/Loss"])}
+                                                    {formatPercentTable(position["% Total Gain/Loss"])}
                                                 </TableCell>
                                             </TableRow>
                                         );
