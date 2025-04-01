@@ -31,7 +31,8 @@ function App() {
   return (
     <Router>
       <div className='w-full'>
-      {access=='admin'?<><AdminView /></>:<><Overview /></>}
+      <Overview />
+      {/* {access=='admin'?<><AdminView /></>:<></>} */}
       </div>
     </Router>
   )

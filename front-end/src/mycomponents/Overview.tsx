@@ -48,12 +48,12 @@ const Overview: React.FC = () => {
         const fetchTrades = async () => {
             try {
                 //console.log("Overview: Fetching trades for other components");
-                const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_trades');
+                const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com/get_trades');
 
                 //console.log("Overview: Fetched trades:", data);
                 const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-                //console.log("Overview: Parsed data:", parsedData["trades"]);
-
+                console.log("Overview: Parsed data:", parsedData["trades"]);
+                const tradesData = parsedData.trades;
                 //console.log("Overview: Fetched trades:", tradesData);
                 setTrades([...tradesData]);
             } catch (err) {
@@ -72,7 +72,7 @@ const Overview: React.FC = () => {
         try {
             const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_trades');
             const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-            const tradesData = parsedData.trades.slice(1);
+            const tradesData = parsedData.trades;
             setTrades(tradesData);
         } catch (err) {
             setError(axios.isAxiosError(err) 
@@ -85,7 +85,7 @@ const Overview: React.FC = () => {
     if (error) return <div>Error: {error}</div>;
 
     return (
-        <div className="container mx-auto p-4">
+        <div className="container mx-auto p-0">
 
             <div className="mb-6">
                 <PortfolioSummary trades={trades} refreshData={refreshTrades} />

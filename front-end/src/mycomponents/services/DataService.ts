@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Trade, PortfolioMetrics, StockSplit } from '../types';
 
-const API_BASE_URL = 'https://port-tracker-a42556a33892.herokuapp.com/';
+const API_BASE_URL = 'https://port-tracker-a42556a33892.herokuapp.com/;
 
 export const fetchTrades = async (): Promise<Trade[]> => {
   try {

@@ -117,43 +117,36 @@ const TradeHistory = ({ trades }: TradeHistoryProps) => {
       </CardHeader>
       <CardContent>
         <div className="relative overflow-x-auto">
-          <table className="w-full text-sm text-center">
-            <thead className="text-xs uppercase bg-secondary">
-              <tr>
-                {columnVisibility['Date of Trade'] && <th className="px-6 py-3">Trade Date</th>}
-                {columnVisibility['Symbol'] && <th className="px-6 py-3">Symbol</th>}
-
-
-                {columnVisibility['Quantity'] && <th className="px-6 py-3">Qty</th>}
-                {columnVisibility['Price ($)'] && <th className="px-6 py-3">Price</th>}
-
-                {columnVisibility['Amount ($)'] && <th className="px-6 py-3">Amount</th>}
-            
-   
+          <table className="w-full text-md text-center border-collapse border border-gray-200 dark:border-gray-700">
+            <thead className="text-ms  bg-secondary border-b border-gray-200 dark:border-gray-700">
+              <tr className="text-md bg-grey-600 text-black dark:bg-green-900 border-b border-gray-200 dark:border-gray-700">
+                {columnVisibility['Date of Trade'] && <th className="px-6 py-3 border border-gray-200 dark:border-gray-700">Trade Date</th>}
+               
+                {columnVisibility['Quantity'] && <th className="px-6 py-3 border border-gray-200 dark:border-gray-700">Qty</th>}
+                {columnVisibility['Price ($)'] && <th className="px-6 py-3 border border-gray-200 dark:border-gray-700">Price</th>}
+                {columnVisibility['Amount ($)'] && <th className="px-6 py-3 border border-gray-200 dark:border-gray-700">Amount</th>}
               </tr>
             </thead>
             <tbody>
-              {trades.map((trade, index) =>{ 
+              {trades.map((trade, index) =>{
                 //console.log(trade);
                 return(
                 <tr key={`${trade['Symbol']}-${index}`} className="border-b">
-                  {columnVisibility['Date of Trade'] && <td className="px-6 py-4">{formatDate(trade['Date of Trade'])}</td>}
-                  {columnVisibility['Symbol'] && <td className="px-6 py-4">{trade['Symbol']}</td>}
-  {columnVisibility['Quantity'] && (
-                    <td className="px-6 py-4">
+                  {columnVisibility['Date of Trade'] && <td className="px-6 py-4 border border-gray-200 dark:border-gray-700">{formatDate(trade['Date of Trade'])}</td>}
+               
+                  {columnVisibility['Quantity'] && (
+                    <td className="px-6 py-4 border border-gray-200 dark:border-gray-700">
                       {trade['Quantity']}
                     </td>
                   )}
                   {columnVisibility['Price ($)'] && (
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 border border-gray-200 dark:border-gray-700">
                       ${trade['Price ($)']}
                     </td>
                   )}
-          
                   {columnVisibility['Amount ($)'] && (
-                    <td className="px-6 py-4">${trade['Amount ($)']}</td>
+                    <td className="px-6 py-4 border border-gray-200 dark:border-gray-700">${(trade['Amount ($)']).toFixed(2)}</td>
                   )}
-
                 </tr>
               )})}
             </tbody>

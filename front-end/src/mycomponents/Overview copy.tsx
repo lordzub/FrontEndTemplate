@@ -48,15 +48,17 @@ const Overview: React.FC = () => {
         const fetchTrades = async () => {
             try {
                 //console.log("Overview: Fetching trades for other components");
-                const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_trades');
+                const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com/get_trades');
                 const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-                const tradesData = parsedData.trades.slice(1);
+                console.log("Overview: Fetched trades:", parsedData);
+                // const tradesData = parsedData.trades.slice(1);
                 //console.log("Overview: Fetched trades:", tradesData);
-                setTrades([...tradesData]);
+                setTrades([...parsedData]);
             } catch (err) {
                 setError(axios.isAxiosError(err) 
                     ? err.response?.data?.message || err.message 
                     : 'An error occurred');
+                    console.log("Overview: Error:", err);
             } finally {
                 setLoading(false);
             }
@@ -67,7 +69,7 @@ const Overview: React.FC = () => {
 
     const refreshTrades = async () => {
         try {
-            const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_trades');
+            const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com/get_trades');
             const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
             const tradesData = parsedData.trades.slice(1);
             setTrades(tradesData);
