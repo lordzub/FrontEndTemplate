@@ -40,9 +40,7 @@ const SQQQPortfolioSummary: React.FC<SQQQPortfolioSummaryProps> = ({ shortPositi
         // Create a date from the date part
         const date = new Date(datePart);
         
-        // Add one day
-        date.setDate(date.getDate() + 1);
-        
+
         // Format the date as YYYY-MM-DD
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0'); // months are 0-indexed
@@ -242,7 +240,7 @@ const SQQQPortfolioSummary: React.FC<SQQQPortfolioSummaryProps> = ({ shortPositi
                                         
                                         return (
                                             <TableRow key={index}>
-                                                <TableCell className="text-center">{formatDate(position.Acquired)}</TableCell>
+                                                <TableCell className="text-center">{position.Acquired}</TableCell>
                                                 <TableCell className="text-center">{position.Quantity}</TableCell>
                                                 <TableCell className="text-center">{formatCurrency(position["Average Cost Basis"])}</TableCell>
                                                 <TableCell className="text-center">{formatCurrency(position["Current Price"])}</TableCell>

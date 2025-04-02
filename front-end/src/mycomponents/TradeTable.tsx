@@ -61,7 +61,7 @@ type SortConfig = {
     direction: 'asc' | 'desc';
 } | null;
 
-const API_BASE_URL = 'https://port-tracker-a42556a33892.herokuapp.com/'; // Adjust based on your Flask server port
+const API_BASE_URL = 'http//:localhost:5000/'; // Adjust based on your Flask server port
 
 const TradeTable = ({ initialTrades = [], onTradeUpdate }: TradeTableProps): JSX.Element => {
     const [trades, setTrades] = useState<Trade[]>(initialTrades);
