@@ -875,7 +875,7 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ trades = [], closed
 <>
         {/* --- Summary Cards --- */}
         {(portfolioTotals || sp500Performance) && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"> {/* Adjusted grid columns */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8"> {/* Adjusted grid columns */}
             {/* Market Value */}
             {portfolioTotals && portfolioTotals.totalValue > 0 && (
                 <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
@@ -885,6 +885,9 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ trades = [], closed
                     </p>
                 </div>
             )}
+
+
+
             {/* Unrealized P/L */}
             {portfolioTotals && portfolioTotals.totalUnrealizedPL !== 0 && (
                  <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
@@ -898,16 +901,32 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ trades = [], closed
                  </div>
             )}
             {/* Realized P/L */}
-            {portfolioTotals && portfolioTotals.totalRealizedPL !== 0 && (
+            {portfolioTotals && (
                  <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                     <h3 className="text-base font-medium text-gray-500 dark:text-gray-400 mb-1">Total Realized P/L</h3>
                     <p className={`text-3xl font-bold ${portfolioTotals.totalRealizedPL >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
                         ${portfolioTotals.totalRealizedPL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <span className="text-base ml-1 font-medium">
+                            ({((portfolioTotals.totalRealizedPL) / portfolioTotals.totalValue * 100).toFixed(2) + '%' })
+                        </span>
                     </p>
                  </div>
-             )}
-             {/* S&P 500 Performance Card */}
-             {sp500Performance && (
+            )}
+
+            {/* Total PNL */}
+            {portfolioTotals && (
+                <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                    <h3 className="text-base font-medium text-gray-500 dark:text-gray-400 mb-1">Total P/L</h3>
+                    <p className={`text-3xl font-bold ${(portfolioTotals.totalUnrealizedPL + portfolioTotals.totalRealizedPL) >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
+                        ${(portfolioTotals.totalUnrealizedPL + portfolioTotals.totalRealizedPL).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <span className="text-base ml-1 font-medium">
+                            ({portfolioTotals.totalValue > 0 ? ((portfolioTotals.totalUnrealizedPL + portfolioTotals.totalRealizedPL) / portfolioTotals.totalValue * 100).toFixed(2) + '%' : '0%'})
+                        </span>
+                    </p>
+                </div>
+            )}
+            {/* S&P 500 Performance Card */}
+            {sp500Performance && (
                 <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                     <h3 className="text-base font-medium text-gray-500 dark:text-gray-400 mb-1 flex items-center justify-center">
                         S&P 500 ({sp500Performance.startKey}) {/* Display the start key */}
