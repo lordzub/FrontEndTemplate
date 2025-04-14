@@ -9,33 +9,26 @@ import {
 } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
-import { ChevronDown, ChevronUp, ChevronsUpDown, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
 import { format, isValid, parse } from 'date-fns';
-import { DateRange } from 'react-day-picker';
-import { Calendar as CalendarIcon } from "lucide-react";
-import { Calendar } from "../components/ui/calendar";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "../components/ui/popover";
-import { Label } from "../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import axios from 'axios';
 
-// Updated interface to match the provided example object
-interface Trade {
-    'Date of Trade': string;
+// Define the expected structure of a closed position object
+interface ClosedPosition {
     'Symbol': string;
     'Quantity': number;
-    'Price ($)': number;
-    'Amount ($)': number;
-    'Current Price'?: number; // Added based on example, marked as optional
-    [key: string]: any; // Keep for flexibility if other fields might exist
+    'Acquired': string;
+    'Date Sold': string;
+    'Cost Basis': number;
+    'Cost Basis Per Share': number;
+    'Proceeds': number;
+    'Proceeds Per Share': number;
+    'Gain/Loss': number;
+    [key: string]: any; // For flexibility
 }
 
-interface TradeTableProps {
-    initialTrades?: Trade[];
+interface ClosedPositionsTableProps {
+    closedPositions: ClosedPosition[];
+    columnOrder?: string[]; // Optional array to control column order
 }
 
 type SortConfig = {
@@ -43,14 +36,39 @@ type SortConfig = {
     direction: 'asc' | 'desc';
 } | null;
 
-const API_BASE_URL = 'http://localhost:5000/'; // Adjust based on your Flask server port
+// Default column order based on the example provided
+const DEFAULT_COLUMN_ORDER = [
+    'Symbol',
+    'Quantity',
+    'Acquired',
+    'Date Sold',
+    'Cost Basis',
+    'Cost Basis Per Share',
+    'Proceeds',
+    'Proceeds Per Share',
+    'Gain/Loss'
+];
 
-const TradeTable = ({ initialTrades = [] }: TradeTableProps): JSX.Element => {
-    const [trades, setTrades] = useState<Trade[]>(initialTrades);
+const ClosedPositionsTable = ({ 
+    closedPositions, 
+    columnOrder = DEFAULT_COLUMN_ORDER 
+}: ClosedPositionsTableProps): JSX.Element => {
+    // Get all available columns from the data
+    const availableColumns = closedPositions.length > 0 ? Object.keys(closedPositions[0]) : [];
+    
+    // Build display columns:
+    // 1. First take all columns from columnOrder that exist in the data
+    // 2. Then add any columns from the data that aren't in columnOrder
+    const orderedColumns = [
+        ...columnOrder.filter(col => availableColumns.includes(col)),
+        ...availableColumns.filter(col => !columnOrder.includes(col))
+    ];
+    
+    // State management
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState<SortConfig>(null);
     const [currentPage, setCurrentPage] = useState(1);
-
+    
     const ITEMS_PER_PAGE = 50;
 
     // Sorting logic
@@ -61,7 +79,7 @@ const TradeTable = ({ initialTrades = [] }: TradeTableProps): JSX.Element => {
         }));
     };
 
-    // Add this helper function
+    // Helper to format dates
     const formatDate = (dateStr: string) => {
         // Attempt to parse the new format MM/DD/YYYY
         if (!dateStr) return '';
@@ -80,13 +98,45 @@ const TradeTable = ({ initialTrades = [] }: TradeTableProps): JSX.Element => {
         }
     };
 
+    // Helper to format values
+    const formatValue = (key: string, value: any) => {
+        if (!value && value !== 0) return '';
+        
+        // Format dates
+        if (key.toLowerCase().includes('date') || key === 'Acquired') {
+            return formatDate(value);
+        }
+
+        // Format currency
+        if (key === 'Quantity' ) {
+            return value;
+        }
+        
+        // Format Gain/Loss with color
+        if (key === 'Gain/Loss') {
+            const formattedValue = '$' + Math.abs(value).toFixed(2);
+            return (
+                <span className={value >= 0 ? "text-green-600" : "text-red-600"}>
+                    {value >= 0 ? "+" : "-"}{formattedValue}
+                </span>
+            );
+        }
+        
+        // Format numbers
+        if (typeof value === 'number') {
+            return '$' + value.toFixed(2);
+        }
+        
+        return String(value);
+    };
+
     // Apply filters and sorting
-    const filteredAndSortedTrades = trades
-        .filter(trade => {
+    const filteredAndSortedPositions = closedPositions
+        .filter(position => {
             // Search across all fields
             if (searchTerm) {
                 const searchLower = searchTerm.toLowerCase();
-                return Object.values(trade).some(value => 
+                return Object.values(position).some(value => 
                     String(value).toLowerCase().includes(searchLower)
                 );
             }
@@ -101,7 +151,7 @@ const TradeTable = ({ initialTrades = [] }: TradeTableProps): JSX.Element => {
             const bValue = b[key];
 
             // Add special handling for dates
-            if (key === 'Date of Trade') { // Removed 'Settlement Date'
+            if (key.toLowerCase().includes('date') || key === 'Acquired') {
                 // Attempt to handle both potential date formats
                 const parseDate = (val: string) => {
                     if (!val) return new Date(0);
@@ -141,81 +191,59 @@ const TradeTable = ({ initialTrades = [] }: TradeTableProps): JSX.Element => {
             : <ChevronDown className="h-4 w-4" />;
     };
 
-    // Paginate trades
-    const paginatedTrades = filteredAndSortedTrades.slice(
+    // Paginate positions
+    const paginatedPositions = filteredAndSortedPositions.slice(
         (currentPage - 1) * ITEMS_PER_PAGE,
         currentPage * ITEMS_PER_PAGE
     );
 
-    const totalPages = Math.ceil(filteredAndSortedTrades.length / ITEMS_PER_PAGE);
-
-    // Define columns to display - Use keys as labels
-    const displayColumns = [
-        { key: 'Date of Trade', label: 'Date of Trade' },
-        { key: 'Symbol', label: 'Symbol' },
-        { key: 'Quantity', label: 'Quantity' }, // Changed label
-        { key: 'Price ($)', label: 'Price ($)' }, // Changed label
-        { key: 'Amount ($)', label: 'Amount ($)' }, // Changed label
-        { key: 'Current Price', label: 'Current Price' }, // Changed label
-    ];
+    const totalPages = Math.ceil(filteredAndSortedPositions.length / ITEMS_PER_PAGE);
 
     return (
         <div className="space-y-4 w-full">
-            {/* Column visibility toggles removed */}
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <Input
-                        placeholder="Search trades..."
+                        placeholder="Search closed positions..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="max-w-sm rounded-xl border-gray-300"
                     />
                 </div>
-                {/* Removed the visibility toggle button and panel */}
             </div>
             <Table>
                 <TableHeader>
                     <TableRow>
-                        {/* Removed check for columnVisibility */}
-                        {displayColumns.map((column) => (
-                            <TableHead key={column.key} className="text-center">
+                        {orderedColumns.map((column) => (
+                            <TableHead key={column}>
                                 <Button
                                     variant="ghost"
-                                    onClick={() => handleSort(column.key)}
-                                    className="flex items-center justify-center gap-1 mx-auto"
+                                    onClick={() => handleSort(column)}
+                                    className="flex items-center gap-1"
                                 >
-                                    {/* Use the column key directly as the header */}
-                                    {column.key}
-                                    {getSortIcon(column.key)}
+                                    {column}
+                                    {getSortIcon(column)}
                                 </Button>
                             </TableHead>
                         ))}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {paginatedTrades.length === 0 ? (
+                    {paginatedPositions.length === 0 ? (
                         <TableRow>
                             <TableCell
-                                // Set colSpan to the fixed number of columns
-                                colSpan={displayColumns.length}
+                                colSpan={orderedColumns.length || 1}
                                 className="text-center py-4"
                             >
-                                No trades found
+                                No closed positions found
                             </TableCell>
                         </TableRow>
                     ) : (
-                        paginatedTrades.map((trade, index) => (
+                        paginatedPositions.map((position, index) => (
                             <TableRow key={index}>
-                                {/* Removed check for columnVisibility */}
-                                {displayColumns.map((column) => (
-                                    <TableCell key={column.key} className="text-center align-middle">
-                                        {column.key === 'Date of Trade' ? (
-                                            formatDate(trade[column.key])
-                                        ) : column.key === 'Quantity' || column.key === 'Price ($)' || column.key === 'Amount ($)' || column.key === 'Current Price' ? (
-                                            typeof trade[column.key] === 'number' ? trade[column.key].toFixed(2) : trade[column.key]
-                                        ) : (
-                                            trade[column.key]
-                                        )}
+                                {orderedColumns.map((column) => (
+                                    <TableCell key={column} className={'align-middle text-center'}>
+                                        {formatValue(column, position[column])}
                                     </TableCell>
                                 ))}
                             </TableRow>
@@ -223,11 +251,11 @@ const TradeTable = ({ initialTrades = [] }: TradeTableProps): JSX.Element => {
                     )}
                 </TableBody>
             </Table>
-
+            
             {/* Pagination controls */}
             <div className="flex items-center justify-between py-4">
                 <div className="text-sm text-gray-500">
-                    Showing {filteredAndSortedTrades.length > 0 ? ((currentPage - 1) * ITEMS_PER_PAGE) + 1 : 0} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredAndSortedTrades.length)} of {filteredAndSortedTrades.length} trades
+                    Showing {filteredAndSortedPositions.length > 0 ? ((currentPage - 1) * ITEMS_PER_PAGE) + 1 : 0} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredAndSortedPositions.length)} of {filteredAndSortedPositions.length} positions
                 </div>
                 <div className="flex gap-2">
                     <Button
@@ -250,4 +278,4 @@ const TradeTable = ({ initialTrades = [] }: TradeTableProps): JSX.Element => {
     );
 };
 
-export default TradeTable; 
+export default ClosedPositionsTable; 
