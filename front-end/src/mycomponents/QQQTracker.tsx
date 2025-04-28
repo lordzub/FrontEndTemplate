@@ -1,17 +1,8 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import SymbolSection from './SymbolSection';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "../components/ui/table";
 import TradeTable from './TradeTable';
-import PortfolioSummary from './PortfolioSummary';
+import QQQPortfolioSummary from './QQQPortfolioSummary';
 import ClosedPositionsTable from './ClosedPositionsTable';
 
 // Define an interface for the S&P 500 data structure
@@ -19,7 +10,7 @@ interface SP500Data {
     [key: string]: number;
 }
 
-interface OverviewProps {
+interface QQQTrackerProps {
     openTrades: any[];
     closedPositions: any[];
     sp500Data: SP500Data | null;
@@ -27,15 +18,24 @@ interface OverviewProps {
     error: string | null;
 }
 
-const Overview: React.FC<OverviewProps> = ({ 
+const QQQTracker: React.FC<QQQTrackerProps> = ({ 
     openTrades, 
     closedPositions, 
     sp500Data, 
     loading, 
     error 
 }) => {
-    if (loading) return <div>Loading portfolio data...</div>;
+    if (loading) return <div>Loading QQQ data...</div>;
     if (error) return <div>Error: {error}</div>;
+
+    // Filter trades for TQQQ and SQQQ
+    const filteredOpenTrades = openTrades.filter(trade => 
+        trade.Symbol === 'TQQQ' || trade.Symbol === 'SQQQ'
+    );
+    
+    const filteredClosedPositions = closedPositions.filter(position => 
+        position.Symbol === 'TQQQ' || position.Symbol === 'SQQQ'
+    );
 
     return (
         <div className="container mx-auto p-2 border-black-600 rounded-xl">
@@ -45,21 +45,21 @@ const Overview: React.FC<OverviewProps> = ({
                         value="overview" 
                         className="data-[state=active]:bg-green-600 data-[state=active]:text-white text-lg font-medium"
                     >
-                        Overview
+                         Overview
                     </TabsTrigger>
                     <TabsTrigger 
                         value="tables" 
                         className="data-[state=active]:bg-green-600 data-[state=active]:text-white text-lg font-medium"
                     >
-                        Tables
+                         Tables
                     </TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="overview">
                     <div className="mb-6">
-                        <PortfolioSummary 
-                            trades={openTrades} 
-                            closedPositions={closedPositions} 
+                        <QQQPortfolioSummary 
+                            trades={filteredOpenTrades} 
+                            closedPositions={filteredClosedPositions} 
                             sp500Data={sp500Data}
                         />
                     </div>
@@ -72,20 +72,20 @@ const Overview: React.FC<OverviewProps> = ({
                                 value="open" 
                                 className="data-[state=active]:bg-green-600 data-[state=active]:text-white text-lg font-medium"
                             >
-                                Open Positions
+                                Open QQQ Positions
                             </TabsTrigger>
                             <TabsTrigger 
                                 value="closed" 
                                 className="data-[state=active]:bg-green-600 data-[state=active]:text-white text-lg font-medium"
                             >
-                                Closed Positions
+                                Closed QQQ Positions
                             </TabsTrigger>
                         </TabsList>
                         <TabsContent value="open">
-                            <TradeTable initialTrades={openTrades} />
+                            <TradeTable initialTrades={filteredOpenTrades} />
                         </TabsContent>
                         <TabsContent value="closed">
-                            <ClosedPositionsTable closedPositions={closedPositions} />
+                            <ClosedPositionsTable closedPositions={filteredClosedPositions} />
                         </TabsContent>
                     </Tabs>
                 </TabsContent>
@@ -94,4 +94,4 @@ const Overview: React.FC<OverviewProps> = ({
     );
 };
 
-export default Overview;
+export default QQQTracker; 

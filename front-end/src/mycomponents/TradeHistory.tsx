@@ -8,7 +8,19 @@ interface TradeHistoryProps {
   trades: FormattedTrade[];
 }
 
+const ITEMS_PER_PAGE = 5; // Define items per page
+
 const TradeHistory = ({ trades }: TradeHistoryProps) => {
+  const [currentPage, setCurrentPage] = useState(1); // State for current page
+
+  // Calculate total pages
+  const totalPages = Math.ceil(trades.length / ITEMS_PER_PAGE);
+
+  // Calculate the trades to display for the current page
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentTrades = trades.slice(startIndex, endIndex);
+
   // State to manage column visibility
   //console.log("TradeHistory: Fetched trades:", trades);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
@@ -80,6 +92,15 @@ const TradeHistory = ({ trades }: TradeHistoryProps) => {
     });
   };
 
+  // Pagination handlers
+  const handlePrevPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
   if (!trades || trades.length === 0) {
     return (
       <Card className="lg:col-span-3">
@@ -94,32 +115,13 @@ const TradeHistory = ({ trades }: TradeHistoryProps) => {
   }
 
   return (
-    <Card className="lg:col-span-3">
-      <CardHeader className="flex flex-row items-center justify-between">
-
-        {/* <div className="relative">
-          <Button 
-            variant="ghost" 
-            onClick={() => setIsColumnPanelOpen(!isColumnPanelOpen)}
-            className="p-2"
-          >
-            <Eye className="h-6 w-6" />
-          </Button>
-          {isColumnPanelOpen && (
-            <div className="absolute right-0 top-full mt-2 z-50">
-              <ColumnVisibilityPanel 
-                columnVisibility={columnVisibility} 
-                toggleColumnVisibility={toggleColumnVisibility} 
-              />
-            </div>
-          )}
-        </div> */}
-      </CardHeader>
-      <CardContent>
+    <Card className="lg:col-span-3 h-full">
+   
+      <CardContent className="p-0 h-full border-red-900 dark:border-gray-700">
         <div className="relative overflow-x-auto">
-          <table className="w-full text-md text-center border-collapse border border-gray-200 dark:border-gray-700">
-            <thead className="text-ms  bg-secondary border-b border-gray-200 dark:border-gray-700">
-              <tr className="text-md bg-grey-600 text-black dark:bg-green-900 border-b border-gray-200 dark:border-gray-700">
+          <table className="w-full text-md text-center border-collapse ">
+            <thead className="text-ms ">
+              <tr className="text-md bg-grey-600 text-black">
                 {columnVisibility['Date of Trade'] && <th className="px-6 py-3 border border-gray-200 dark:border-gray-700">Trade Date</th>}
                
                 {columnVisibility['Quantity'] && <th className="px-6 py-3 border border-gray-200 dark:border-gray-700">Qty</th>}
@@ -128,10 +130,10 @@ const TradeHistory = ({ trades }: TradeHistoryProps) => {
               </tr>
             </thead>
             <tbody>
-              {trades.map((trade, index) =>{
+              {currentTrades.map((trade, index) =>{
                 //console.log(trade);
                 return(
-                <tr key={`${trade['Symbol']}-${index}`} className="border-b">
+                <tr key={`${trade['Symbol']}-${startIndex + index}`} className="border-b">
                   {columnVisibility['Date of Trade'] && <td className="px-6 py-4 border border-gray-200 dark:border-gray-700">{formatDate(trade['Date of Trade'])}</td>}
                
                   {columnVisibility['Quantity'] && (
@@ -151,6 +153,16 @@ const TradeHistory = ({ trades }: TradeHistoryProps) => {
               )})}
             </tbody>
           </table>
+        </div>
+         {/* Pagination Controls */}
+         <div className="flex justify-center items-center space-x-2 p-4">
+          <Button onClick={handlePrevPage} disabled={currentPage === 1}>
+            Previous
+          </Button>
+          <span>Page {currentPage} of {totalPages}</span>
+          <Button onClick={handleNextPage} disabled={currentPage === totalPages}>
+            Next
+          </Button>
         </div>
       </CardContent>
     </Card>
