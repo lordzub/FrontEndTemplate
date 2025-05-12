@@ -133,9 +133,9 @@ const SQQQPortfolioSummary: React.FC<SQQQPortfolioSummaryProps> = ({ shortPositi
                                 </p>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-sm text-muted-foreground">Rate of Return</p>
+                                <p className="text-sm text-muted-foreground">P&L %</p>
                                 <p className={`text-2xl font-bold ${overallSummary.rateOfReturn >= 0 ? "text-green-600" : "text-red-600"}`}>
-                                    {formatPercent(overallSummary.rateOfReturn)}
+                                    {(((overallSummary.totalGainLoss/overallSummary.totalValue))*100).toFixed(2)}%
                                 </p>
                             </div>
                         </div>
