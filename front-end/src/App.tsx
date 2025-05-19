@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom'
 import './App.css'
 import Overview from './mycomponents/Overview'
 import QQQTracker from './mycomponents/QQQTracker'
@@ -11,7 +11,7 @@ interface SP500Data {
   [key: string]: number;
 }
 
-function App() {
+function AppContent() {
   const [access, setAccess] = useState('default')
   const [openTrades, setOpenTrades] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -19,11 +19,12 @@ function App() {
   const [closedPositions, setClosedPositions] = useState<any[]>([]);
   const [sp500Data, setSP500Data] = useState<SP500Data | null>(null);
   const initialized = useRef(false);
+  const navigate = useNavigate();
 
   const fetchOpenTrades = async () => {
     try {
       console.log("App: Fetching open trades...");
-      const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_trades');
+      const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com/get_trades');
       const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
       console.log("App: Parsed open trades:", parsedData["trades"]);
       const tradesData = parsedData.trades || [];
@@ -39,7 +40,7 @@ function App() {
   const fetchClosedPositions = async () => {
     try {
       console.log("App: Fetching closed positions...");
-      const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_closed_positions');
+      const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com/get_closed_positions');
       const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
       console.log("App: Parsed closed positions:", parsedData["closed_positions"]);
       const closedPositionsData = parsedData.closed_positions || [];
@@ -55,7 +56,7 @@ function App() {
   const fetchSP500Data = async () => {
     try {
       console.log("App: Fetching S&P 500 data...");
-      const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com//get_sp500_data');
+      const { data } = await axios.get('https://port-tracker-a42556a33892.herokuapp.com/get_sp500_data');
       const spData = data.sp500_data || null;
       console.log("App: Parsed S&P 500 data:", spData);
       setSP500Data(spData);
@@ -95,6 +96,8 @@ function App() {
         try {
           const response = await axios.post('https://port-tracker-a42556a33892.herokuapp.com/api/verify', { token });
           setAccess(response.data.access);
+          // Navigate to overview when token is present
+          navigate('/overview');
         } catch (error) {
           console.error('Error verifying token:', error);
         }
@@ -107,26 +110,54 @@ function App() {
     };
 
     initializeApp();
-  }, []);
+  }, [navigate]);
 
   if (loading) return <div>Loading portfolio data...</div>;
   if (error) return <div>Error: {error}</div>;
 
   return (
+    <div className='w-full'>
+      {/* <nav className="bg-gray-800 p-4">
+        <ul className="flex space-x-4">
+          <li>
+            <Link to="/" className="text-white hover:text-gray-300">QQQ Tracker</Link>
+          </li>
+          <li>
+            <Link to="/overview" className="text-white hover:text-gray-300">Overview</Link>
+          </li>
+        </ul>
+      </nav> */}
 
-      <div className='w-full'>
-      <QQQTracker 
-              openTrades={openTrades}
-              closedPositions={closedPositions}
-              sp500Data={sp500Data}
-              loading={loading}
-              error={error}
-            />
+      <Routes>
+        <Route path="/" element={
+          <QQQTracker 
+            openTrades={openTrades}
+            closedPositions={closedPositions}
+            sp500Data={sp500Data}
+            loading={loading}
+            error={error}
+          />
+        } />
+        <Route path="/overview" element={
+          <Overview 
+            openTrades={openTrades}
+            closedPositions={closedPositions}
+            sp500Data={sp500Data}
+            loading={loading}
+            error={error}
+          />
+        } />
+      </Routes>
+    </div>
+  );
+}
 
-
-      </div>
-
-  )
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
 }
 
 export default App

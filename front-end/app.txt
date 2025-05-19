@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -11,12 +11,12 @@ from datetime import date
  # Add this at the top with other imports
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../front-end/dist')
 
 # Configure CORS globally
 CORS(app, resources={
     r"/*": {
-        "origins": ["http://host:3173", "http://localhost:5173"],
+        "origins": ["http://host:3173", "http://localhost:5173", "https://port-tracker-a42556a33892.herokuapp.com"],
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "expose_headers": ["Content-Type", "Authorization"],
@@ -334,6 +334,15 @@ def not_found(error):
 def internal_error(error):
     response = jsonify({'error': 'Internal server error'})
     return add_cors_headers(response), 500
+
+# Add this catch-all route at the end of your routes
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(app.static_folder + '/' + path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
